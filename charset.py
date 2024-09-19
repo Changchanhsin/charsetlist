@@ -9,7 +9,7 @@ import sys
 argument.setCopyright("2016-2024, Chanhsin")
 argument.addDescription("  Create character set array")
 argument.addSerial("charset", "Character set : 'gb', 'gbk', 'gb18030', 'big5', 'sjis'")
-argument.addSerial("file", "Output file name (html)")
+argument.addSerial("file", "Output file name (html), default is charset+'.html' or '.txt' if /t is selected")
 argument.addKey("l", "List zone/array id of charaset", 0)
 argument.addKey("b", "By area block", 0)
 argument.addKey("z", "show zone ids, e.g. 'symbols,chinese', split with ',' no spacing", 1)
@@ -18,10 +18,10 @@ argument.addKey("f", "show array ids, e.g. 'single,double', split with ',' no sp
 argument.addKey("t", "Output as TXT file", 0)
 #argument.addKey("s", "Specify the start code, in HEX without '0x' prefix", 1)
 #argument.addKey("e", "Specify the end code, default is start code", 1)
-argument.addKey("g", "Characters gap with space('s'/'2s'), tabulation('t'), or no space('n'), default is 't'", 1)
+argument.addKey("g", "Characters gap (in TXT file) with space('s'/'2s'), tabulation('t'), or no space('n'), default is 't'", 1)
 argument.addKey("d", "show debug message", 0)
 argument.addKey("h", "help", 0)
-argument.addExample("  charset.py gbk gbk.html /b")
+argument.addExample("  %file% gbk gbk.html /b")
 
 argument.parse(argv)
 if argument.key("t", "False" ) == "True":
@@ -686,9 +686,7 @@ if listZone=="True":
 
 with open(fn1, 'wb') as f:
   writefile.head(f, charsetinfo[currset][0],charsetinfo[currset][1]);
-  #  writefile.actScript(f)
-  #  writefile.actCSS(f)
-  #  writefile.actInput(f)
+#  writefile.actChangeFont(f)
   writefile.title(f, charsetinfo[currset][2],\
                     "Codepage : "+charsetinfo[currset][3] + writefile.lineBreak() +\
                     "Language : "+charsetinfo[currset][4] + writefile.lineBreak() +\

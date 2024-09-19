@@ -161,6 +161,7 @@ def head(fp, codepage, font):
     string(fp, "<html>\n")
     string(fp, "  <meta http-equiv=\"Content-Type\" content=\"text/html; charset="+codepage+"\" />\n")
     string(fp, "  <style>\n")
+    string(fp, "    #control{border: 1px solid #000;  border-bottom-right-radius:14px;  border-top--right-radius:14px;  background:black;  color:white;  padding:2px;  position:fixed;  top:0px;left:0px;  box-shadow:4px 4px 16px #000  }\n")
     string(fp, "    .arrayHeading{background-color:blue;color:white;text-align:center;min-width:32px}\n")
     string(fp, "    .arrayCharacter{background-color:white;color:black;text-align:center;font-family:'"+font+"';font-size:24px;}\n")
     string(fp, "    .arrayOutofbound{background-color:lightblue;color:black;}\n")
@@ -173,7 +174,21 @@ def head(fp, codepage, font):
     string(fp, "    .info{font-size:small;}\n")
     string(fp, "    .detail{background:white;color:black;font-size:xx-small;font-family:monospace}\n")
     string(fp, "  </style>\n")
+    string(fp, " <script>\n")
+    string(fp, "function changeFont(){\n")
+    string(fp, "  for(styleRule of document.styleSheets[0].cssRules){\n")
+    string(fp, "    if(styleRule.selectorText==\".arrayCharacter\"){\n")
+    string(fp, "      styleRule.style.fontFamily = document.getElementById('fontfamily').value;\n")
+    string(fp, "      console.log(styleRule.style.fontFamily);\n")
+    string(fp, "    }\n")
+    string(fp, "  }\n")
+    string(fp, "}\n")
+    string(fp, " </script>\n")
     string(fp, "  <body>\n")
+    string(fp, "<div id=control style=\"transition:all1s linear;\">\n")
+    string(fp, "  <input alt='Fangsong,Kaiti,SimHei' type=text id=\"fontfamily\" value=\""+font+"\"><input type=button value=\"Refresh Font\" onclick=\"changeFont();\">\n")
+    string(fp, "  <input type=button style=\"border-top--right-radius:15px;border-bottom-right-radius:15px;\" id=actcontrol onclick=\"if(document.getElementById('control').offsetLeft==0){document.getElementById('control').style.left=-document.getElementById('control').offsetWidth+document.getElementById('actcontrol').offsetWidth+6+'px';document.getElementById('actcontrol').value='>';}else{document.getElementById('control').style.left='0px';document.getElementById('actcontrol').value='<';}\" value='<'>")
+    string(fp, "</div>\n<br/><br/>\n")
 
 def tail(fp):
   if isHTML:
@@ -419,3 +434,4 @@ def array(fp, t, rx, ry, ar, power):
       tdE(fp)
     trE(fp)
   tableE(fp)
+
