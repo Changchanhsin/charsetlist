@@ -7,6 +7,7 @@ helpExample=""
 helpSerial=[]
 helpSerialDesc=[]
 helpKey=[]
+helpKeyName=[]
 helpKeyNeedValue=[]
 helpKeyDesc=[]
 paraSerial=[]
@@ -49,9 +50,11 @@ def addSerial(k, desc):
 def addKey(k, desc, needvalue):
   global paraHelp
   global helpKey
+  global helpKeyName
   global helpKeyDesc
-  paraHelp.append("/"+ k + " = " + desc)
-  helpKey.append(k)
+  paraHelp.append("/"+ k[0:1] + " = " + desc)
+  helpKey.append(k[0:1])
+  helpKeyName.append(k)
   helpKeyDesc.append(desc)
   helpKeyNeedValue.append(needvalue)
 
@@ -93,7 +96,7 @@ def printHelp(num):
   s = ""
   for i in helpKey:
     if helpKeyNeedValue[helpKey.index(i)]:
-      s = s + " /" + i + " " + i
+      s = s + " /" + i + " " + helpKeyName[helpKey.index(i)]
     else:
       s = s + " /" + i
   for i in helpSerial:
@@ -104,7 +107,7 @@ def printHelp(num):
     print("  " + i)
   if helpExample!="":
     print("\033[32m Example:\033[m")
-    print(helpExample)
+    print(helpExample.replace("%file%",paraName))
   print("\033[32m Copyright(C) " + helpCopyright + "\033[m")
   sys.exit()
 

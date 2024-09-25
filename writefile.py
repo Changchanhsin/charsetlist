@@ -183,11 +183,36 @@ def head(fp, codepage, font):
     string(fp, "    }\n")
     string(fp, "  }\n")
     string(fp, "}\n")
+    string(fp, "async function checkFontData(f) {\n")
+    string(fp, "  if (\"queryLocalFonts\" in window) {\n")
+    string(fp, "    s=\"\";oldf=""console.log(1);\n")
+    string(fp, "    try {\n")
+    string(fp, "      const availableFonts = await window.queryLocalFonts();\n")
+    string(fp, "      for (const fontData of availableFonts) {\n")
+    string(fp, "        if(fontData.family!=oldf){\n");
+    string(fp, "          if(fontData.family==f){\n")
+    string(fp, "            console.log(2);s=s + \"<option selected value='\" + fontData.family + \"'>\"+ fontData.family + \"</option>\";\n")
+    string(fp, "          }else{\n")
+    string(fp, "            console.log(3);s=s + \"<option value='\" + fontData.family + \"'>\"+ fontData.family + \"</option>\";\n")
+    string(fp, "          }\n")
+    string(fp, "          oldf=fontData.family;\n")
+    string(fp, "        }\n")
+    string(fp, "      }\n")
+    string(fp, "      console.log(4);document.getElementById('fontfamily').innerHTML = s;\n")
+    string(fp, "    } catch (err) {\n")
+    string(fp, "      console.log(5);document.getElementById('fontfamily').outerHTML = \"<input type=text id='fontfamily' value='\"+ f + \"'>\";\n")
+    string(fp, "    }\n")
+    string(fp, "  }else{\n")
+    string(fp, "    console.log(6);document.getElementById('fontfamily').outerHTML = \"<input type=text id='fontfamily' value='\"+ f + \"'>\";\n")
+    string(fp, "  }\n")
+    string(fp, "}\n")
     string(fp, " </script>\n")
-    string(fp, "  <body>\n")
-    string(fp, "<div id=control style=\"transition:all1s linear;\">\n")
-    string(fp, "  <input alt='Fangsong,Kaiti,SimHei' type=text id=\"fontfamily\" value=\""+font+"\"><input type=button value=\"Refresh Font\" onclick=\"changeFont();\">\n")
-    string(fp, "  <input type=button style=\"border-top--right-radius:15px;border-bottom-right-radius:15px;\" id=actcontrol onclick=\"if(document.getElementById('control').offsetLeft==0){document.getElementById('control').style.left=-document.getElementById('control').offsetWidth+document.getElementById('actcontrol').offsetWidth+6+'px';document.getElementById('actcontrol').value='>';}else{document.getElementById('control').style.left='0px';document.getElementById('actcontrol').value='<';}\" value='<'>")
+    string(fp, "  <body onload='checkFontData(\"" + font + "\");'>\n")
+    string(fp, "<div id=control style='transition:all1s linear;'>\n")
+    string(fp, "  <select id='fontfamily' size='1'>\n")  #  onchange='changeFont();'>")
+    string(fp, "  </select>")
+    string(fp, "  <input type=button value='Reload Font' onclick='changeFont();'>\n")
+    string(fp, "  <input type=button style=\"border-top--right-radius:15px;border-bottom-right-radius:15px;\" id=actcontrol onclick=\"if(document.getElementById('control').offsetLeft==0){document.getElementById('control').style.left=-document.getElementById('control').offsetWidth+document.getElementById('actcontrol').offsetWidth+6+'px';document.getElementById('actcontrol').value='>';}else{document.getElementById('control').style.left='0px';document.getElementById('actcontrol').value='<';}\" value='<'>\n")
     string(fp, "</div>\n<br/><br/>\n")
 
 def tail(fp):
@@ -246,6 +271,11 @@ def tdUnused(fp):
 def trhB(fp):
   trB(fp)
   thB(fp)
+
+def trhBSpans(fp, s):
+  trB(fp)
+  if isHTML:
+    string(fp, "<td align=center class=arrayHeading colspan="+str(s)+">")
 
 def tablerhB(fp):
   tableB(fp)
@@ -346,6 +376,45 @@ def arrayCol(fp, t, rx, arx, i0, cx, power):
   trE(fp)
 
 def arrayEnd(fp):
+  tableE(fp)
+
+def arrayUnicodeB(fp,ry,x):
+  tableB(fp)
+  trhB(fp)
+  stringmulti(fp, " ",len(str('{:02X}'.format(ry[0]))))
+   #string(fp, charGap)
+  thE(fp)
+  for i1 in range(0,1<<x):
+    thB(fp)
+    hexnumber(fp, i1, 1)
+    #string(fp, charGap)
+    #string(fp, " ")
+    thE(fp)
+  trE(fp)
+
+def arrayUnicodeTitle(fp, t, x, tt):
+  trhBSpans(fp,x)
+  if tt!="" and isHTML:
+    string(fp, "<"+tt+">"+t+"</"+tt+">")
+  else:
+    string(fp, t)
+  trE(fp)
+
+def arrayUnicodeData(fp, u, ry, x):
+  for i0 in ry:
+    trhB(fp)
+    hexnumber(fp, ((u<<12)>>x) + i0,2)
+    thE(fp)
+    for i1 in range(0,1<<x):
+      tdB(fp)
+      if isHTML:
+        htmlUnicode(fp, (u<<16) + (i0<<x) + i1)
+      else:
+        utf8(fp, (u<<16) + (i0<<x) + i1)
+      tdE(fp)
+    trE(fp)
+
+def arrayUnicodeE(fp):
   tableE(fp)
 
 def arrayUnicode(fp, u, ry, x):
