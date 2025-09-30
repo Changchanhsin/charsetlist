@@ -1,7 +1,20 @@
 import struct
+import sys
 
-isHTML=True
-charGap="\t"
+isHTML  = True
+charGap = "\t"
+isShowProgress   = True
+unicode_encoding = ""
+
+def progress_bar(pg_title, pg_finish, pg_now):
+  if isShowProgress==True:
+    percentage = round(pg_finish / pg_now * 100)
+    bar = "#" * (percentage//2) + " " * (50-percentage//2)
+    print(f"\r{pg_title}: [{bar}] {percentage}%", end="")
+    if pg_finish != pg_now:
+      sys.stdout.flush()
+    else:
+      print("")
 
 def cut(obj, sec):
   return [obj[i:i+sec] for i in range(0, len(obj),sec)]
@@ -31,23 +44,67 @@ def linktagEnd():
 
 def lineBreak():
   if isHTML:
-    return ("<br/>")
+    return ("<br/>\n")
   else:
     return ("\r\n")
 
 def string(fp, str1):
+  global unicode_encoding
+  encoding_length = 1
+  if unicode_encoding == "UTF-16":
+    encoding_length = 2
+  if unicode_encoding == "UTF-16BE":
+    encoding_length = 2
+  if unicode_encoding == "UTF-16LE":
+    encoding_length = -2
+  if unicode_encoding == "UTF-32":
+    encoding_length = 4
+  if unicode_encoding == "UTF-32BE":
+    encoding_length = 4
+  if unicode_encoding == "UTF-32LE":
+    encoding_length = -4
+  #print(unicode_encoding)
   if str1!= "":
-    a = str1.encode()
-    fp.write(a)
+    if encoding_length == 1:
+      a = str1.encode()
+      fp.write(a)
+    if encoding_length == 2:
+      for c in range(0,len(str1)):
+        a = str1[c].encode()
+        fp.write(a)
+        a = struct.pack("B",0)
+        fp.write(a)
+    if encoding_length == -2:
+      for c in range(0,len(str1)):
+        a = struct.pack("B",0)
+        fp.write(a)
+        a = str1[c].encode()
+        fp.write(a)
+    if encoding_length == 4:
+      for c in range(0,len(str1)):
+        a = str1[c].encode()
+        fp.write(a)
+        a = struct.pack("B",0)
+        fp.write(a)
+        fp.write(a)
+        fp.write(a)
+    if encoding_length == -4:
+      for c in range(0,len(str1)):
+        a = struct.pack("B",0)
+        fp.write(a)
+        fp.write(a)
+        fp.write(a)
+        a = str1[c].encode()
+        fp.write(a)
 
 def stringmulti(fp, str1, t):
   a = str1.encode()
   for i in range(t):
-    fp.write(a)
+    string(fp,str1) #.write(a)
 
 def hexnumber(fp, num, w):
-  a = hex(num)[2:].zfill(w).upper().encode()
-  fp.write(a)
+  a = hex(num)[2:].zfill(w).upper() #.encode()
+  string(fp,a)  #.write(a)
 
 def singlebyte(fp, fb1):
   a = struct.pack("B",fb1)
@@ -107,19 +164,123 @@ def utf8(fp, code):
     a = struct.pack("B",b)
     fp.write(a)
 
+def utf16BEinitial(fp):
+  a = struct.pack("B",0xFF);
+  fp.write(a)
+  a = struct.pack("B",0xFE);
+  fp.write(a)
+
+def utf16LE(fp, code):
+  if code <= 0xFFFF:
+    a = struct.pack("B",code>>8);
+    fp.write(a)
+    a = struct.pack("B",code &0xFF);
+    fp.write(a)
+  else:
+    b = (0b110110 <<2) | ((code>>16)-1)>>2;
+    a = struct.pack("B",b)
+    fp.write(a)
+    b = (((code>>16)-1) & 0b11)<<6 | ((code>>10) & 0b111111);
+    a = struct.pack("B",b)
+    fp.write(a)
+    b = (0b110111 <<2) | ((code>>8) & 0b11);
+    a = struct.pack("B",b)
+    fp.write(a)
+    a = struct.pack("B", code & 0xFF);
+    fp.write(a)
+
+def utf16LEinitial(fp):
+  a = struct.pack("B",0xFE);
+  fp.write(a)
+  a = struct.pack("B",0xFF);
+  fp.write(a)
+
+def utf16BE(fp, code):
+  if code <= 0xFFFF:
+    a = struct.pack("B",code &0xFF);
+    fp.write(a)
+    a = struct.pack("B",code>>8);
+    fp.write(a)
+  else:
+    a = struct.pack("B", code & 0xFF);
+    fp.write(a)
+    b = (0b110111 <<2) | ((code>>8) & 0b11);
+    a = struct.pack("B",b)
+    fp.write(a)
+    b = (((code>>16)-1) &0b11)<<6 | ((code>>10) & 0b111111);
+    a = struct.pack("B",b)
+    fp.write(a)
+    b = (0b110110 <<2) | ((code>>16)-1)>>2;
+    a = struct.pack("B",b)
+    fp.write(a)
+
+def utf32LEinitial(fp):
+  a = struct.pack("B",0xFF);
+  fp.write(a)
+  a = struct.pack("B",0xFE);
+  fp.write(a)
+  a = struct.pack("B",0x00);
+  fp.write(a)
+  fp.write(a)
+
+def utf32LE(fp,code):
+  a = struct.pack("B",(code>>24 )&0xFF);
+  fp.write(a)
+  a = struct.pack("B",(code>>16 )&0xFF);
+  fp.write(a)
+  a = struct.pack("B",(code>>8 )&0xFF);
+  fp.write(a)
+  a = struct.pack("B",code & 0xFF);
+  fp.write(a)
+
+def utf32BEinitial(fp):
+  a = struct.pack("B",0x00);
+  fp.write(a)
+  fp.write(a)
+  a = struct.pack("B",0xFE);
+  fp.write(a)
+  a = struct.pack("B",0xFF);
+  fp.write(a)
+
+def utf32BE(fp,code):
+  a = struct.pack("B",code & 0xFF);
+  fp.write(a)
+  a = struct.pack("B",(code>>8 )&0xFF);
+  fp.write(a)
+  a = struct.pack("B",(code>>16 )&0xFF);
+  fp.write(a)
+  a = struct.pack("B",(code>>24 )&0xFF);
+  fp.write(a)
+
+def char_unicode(fp, code):
+  if unicode_encoding == "UTF-8":
+    utf8(fp,code)
+  if unicode_encoding == "UTF-16":
+    utf16BE(fp,code)
+  if unicode_encoding == "UTF-16BE":
+    utf16BE(fp,code)
+  if unicode_encoding == "UTF-16LE":
+    utf16LE(fp,code)
+  if unicode_encoding == "UTF-32":
+    utf32BE(fp,code)
+  if unicode_encoding == "UTF-32BE":
+    utf32BE(fp,code)
+  if unicode_encoding == "UTF-32LE":
+    utf32LE(fp,code)
+
 def title(fp, sTitle, sInfo, sDetail,sDetail2):
   if isHTML:
-    string(fp, "<table style='border-radius:10px 10px 0px 0px;background-color:blue;color:white' ><tr><td class=title>&nbsp;&nbsp;")
+    string(fp, "\n<table style='border-radius:10px 10px 0px 0p;background-color:blue;color:white'>\n<tr><td class=title>&nbsp;&nbsp;")
     string(fp, sTitle)
-    string(fp, "&nbsp;&nbsp;</td><td class=info>")
+    string(fp, "&nbsp;&nbsp;</td>\n<td class=info>\n")
     string(fp, sInfo)
     if sDetail!="":
-      string(fp, "</td></tr><tr><td colspan=2 class=detail>")
+      string(fp, "</td></tr>\n<tr><td colspan=2 class=detail>\n")
       string(fp, sDetail)
     if sDetail2!="":
-      string(fp, "</td></tr><tr><td colspan=2 class=detail>")
+      string(fp, "</td></tr>\n<tr><td colspan=2 class=detail>\n")
       string(fp, sDetail2)
-    string(fp, "</td></tr></table>")
+    string(fp, "</td></tr>\n</table>\n")
   else:
     string(fp, "[  " + sTitle + "  ]\r\n")
     string(fp, sInfo + "\r\n")
@@ -133,11 +294,11 @@ def title(fp, sTitle, sInfo, sDetail,sDetail2):
 
 def subtitle(fp, sT, sI):
   if isHTML:
-    string(fp, "<br>\n<table><tr><td class=title id='"+sT+"'>")
+    string(fp, "<br>\n<table>\n<tr><td class=title id='"+sT+"'>&nbsp;&nbsp;&nbsp;&nbsp;")
     string(fp, sT)
     string(fp, "&nbsp;&nbsp;</td><td class=info>")
     string(fp, sI)
-    string(fp, "</td></tr></table>")
+    string(fp, "</td></tr>\n</table>")
   else:
     string(fp, "\r\n[" + sT + charGap)
     string(fp, sI + "]\r\n")
@@ -185,25 +346,26 @@ def head(fp, codepage, font):
     string(fp, "}\n")
     string(fp, "async function checkFontData(f) {\n")
     string(fp, "  if (\"queryLocalFonts\" in window) {\n")
-    string(fp, "    s=\"\";oldf=""console.log(1);\n")
+    string(fp, "    s=\"\";\n")
     string(fp, "    try {\n")
+    string(fp, "      let allfonts=[];\n")
     string(fp, "      const availableFonts = await window.queryLocalFonts();\n")
     string(fp, "      for (const fontData of availableFonts) {\n")
-    string(fp, "        if(fontData.family!=oldf){\n");
+    string(fp, "        if(allfonts.indexOf(fontData.family)<0){\n");
+    string(fp, "          allfonts.push(fontData.family);\n")
     string(fp, "          if(fontData.family==f){\n")
-    string(fp, "            console.log(2);s=s + \"<option selected value='\" + fontData.family + \"'>\"+ fontData.family + \"</option>\";\n")
+    string(fp, "            s=s + \"<option selected value='\" + fontData.family + \"'>\" + fontData.fullName + \"(\" + fontData.family + \")</option>\";\n")
     string(fp, "          }else{\n")
-    string(fp, "            console.log(3);s=s + \"<option value='\" + fontData.family + \"'>\"+ fontData.family + \"</option>\";\n")
+    string(fp, "            s=s + \"<option value='\" + fontData.family + \"'>\" + fontData.fullName + \"(\" + fontData.family + \")</option>\";\n")
     string(fp, "          }\n")
-    string(fp, "          oldf=fontData.family;\n")
     string(fp, "        }\n")
     string(fp, "      }\n")
-    string(fp, "      console.log(4);document.getElementById('fontfamily').innerHTML = s;\n")
+    string(fp, "      document.getElementById('fontfamily').innerHTML = s;\n")
     string(fp, "    } catch (err) {\n")
-    string(fp, "      console.log(5);document.getElementById('fontfamily').outerHTML = \"<input type=text id='fontfamily' value='\"+ f + \"'>\";\n")
+    string(fp, "      document.getElementById('fontfamily').outerHTML = \"<input type=text id='fontfamily' value='\"+ f + \"'>\";\n")
     string(fp, "    }\n")
     string(fp, "  }else{\n")
-    string(fp, "    console.log(6);document.getElementById('fontfamily').outerHTML = \"<input type=text id='fontfamily' value='\"+ f + \"'>\";\n")
+    string(fp, "    document.getElementById('fontfamily').outerHTML = \"<input type=text id='fontfamily' value='\"+ f + \"'>\";\n")
     string(fp, "  }\n")
     string(fp, "}\n")
     string(fp, " </script>\n")
@@ -410,7 +572,7 @@ def arrayUnicodeData(fp, u, ry, x):
       if isHTML:
         htmlUnicode(fp, (u<<16) + (i0<<x) + i1)
       else:
-        utf8(fp, (u<<16) + (i0<<x) + i1)
+        char_unicode(fp, (u<<16) + (i0<<x) + i1)
       tdE(fp)
     trE(fp)
 
@@ -439,7 +601,7 @@ def arrayUnicode(fp, u, ry, x):
       if isHTML:
         htmlUnicode(fp, (u<<16) + (i0<<x) + i1)
       else:
-        utf8(fp, (u<<16) + (i0<<x) + i1)
+        char_unicode(fp, (u<<16) + (i0<<x) + i1)
       tdE(fp)
     trE(fp)
   tableE(fp)

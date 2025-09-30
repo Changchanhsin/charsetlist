@@ -5,12 +5,11 @@ import argument
 import writefile
 import sys
 
-
 argument.setCopyright("2016-2024, Chanhsin")
 argument.addDescription("  Create character set array")
 argument.addSerial("codepage_name", "Character set: 'gb2312', 'gbk', 'gb18030', 'big5', 'sjis', 'utf-8'")
 argument.addSerial("file_name", "Output file name (html), default is charset+'.html' or '.txt' if /t is selected")
-argument.addKey("list", "List zone/array id of charaset", 0)
+argument.addKey("list", "List zone/array id of charaset or valid codepage_name", 0)
 argument.addKey("block", "Show by block", 0)
 argument.addKey("zone", "Zone id of block when /b is selected, e.g. 'symbols,chinese', split with ',' no spacing", 1)
 argument.addKey("m", "Show as matrix", 0)
@@ -21,6 +20,8 @@ argument.addKey("txt", "Output as TXT file", 0)
 #argument.addKey("e", "Specify the end code, default is start code", 1)
 argument.addKey("gap", "Characters gap (in TXT file) with space('s'/'2s'), tabulation('t'), or no space('n'), default is 't'", 1)
 argument.addKey("version", "Select version year, 'YYYY' for single, '-YYYY' for before, 'YYYY-' for later, 'YYYY-YYYY' for between", 1)
+argument.addKey("utf", "Coding in UTF-8, 16, 16LE, 16BE, 32, 32LE, 32BE, if codepage_name=utf-8", 1)
+#argument.addKey("regular", "highlight regular hanzi level characters", 0)
 argument.addKey("debug", "show debug message", 0)
 argument.addKey("help", "help", 0)
 argument.addExample("  %file% gbk gbk.html /b")
@@ -76,6 +77,10 @@ oneArray  = argument.key("m", "False")
 showZones = argument.key("z", ""     )
 showFulls = argument.key("a", "")
 showStrip = argument.key("s", "False")
+writefile.unicode_encoding = argument.key("u", "")
+print(writefile.unicode_encoding)
+if byBlock=="False" and oneArray=="False":
+  byBlock="True"
 
 if showZones!="":
   fileext = fileext + "." + showZones
@@ -107,9 +112,13 @@ charsetindex=["gb2312","gbk","gb18030","big5","sjis","utf-8"]
 try:
   currset=charsetindex.index(charset)
 except Exception as e:
-  argument.printHelp("1")
+  if listZone=="False":
+    argument.printHelp("1")
+  else:
+    print("Optional valid codepage_name:")
+    for i in charsetindex:
+      print("  "+i)
   sys.exit()
-
 
 CHARSET_GB2312  = 0
 CHARSET_GBK     = 1
@@ -175,9 +184,10 @@ gbkfull    =[["single",  1, "Single Byte",  range(0x2,0x7+1),    range(0x0,0xF+1
 gb18030full=[["single",  1, "Single Byte",  range(0x2,0x7+1),    range(0x0,0xF+1)  ]
             ,["double",  2, "Double Bytes", range(0x81,0xFE+1),  list(range(0x40,0x7E+1))+list(range(0x80,0xFE+1)) ] # CHARSET_GB18030 = 2
             ,["quad-bmp",4, "Quad Bytes for BMP",   0x81308130, 0x8431A439]
-            ,["quad-smp",4, "Quad Bytes for SMP",   0x8431A530, 0x95328235]
+            ,["quad-reserved",4, "Quad Bytes Reserved",  0x8431A530, 0x8439FE39]
+            ,["quad-smp",4, "Quad Bytes for SMP",   0x90308130, 0x95328235] # 0x8431A530, 0x95328235]
             ,["quad-sip",4, "Quad Bytes for SIP",   0x95328236, 0x9A348431]
-
+            ,["quad-tip",4, "Quad Bytes for TIP",   0x9A348432, 0x9F368537]
              ]
 big5full   =[["single",  1, "Single Byte",  range(0x2,0x7+1),    range(0x0,0xF+1)  ]
             ,["double",  2, "Double Bytes", range(0x81,0xFE+1),  list(range(0x40,0x7E+1))+list(range(0xA1,0xFE+1)) ] # CHARSET_BIG5    = 3
@@ -238,25 +248,31 @@ gb18030zone=[["single",     1,1980, "Single",             0x01,   0x7F,   128,  
             ,["uyghur2",    4,2005, "Quad - Uyghur, Kazakh, Kyrgyz (2)",         0x8430BA32, 0x8430FE35, 59,    684  ]
             ,["uyghur3",    4,2005, "Quad - Uyghur, Kazakh, Kyrgyz (3)",         0x84318730, 0x84319530, 84,    141  ]
             ,["tibetan",    4,2005, "Quad - Tibetan",                            0x8132E834, 0x8132FD31, 193,   208  ]
-            ,["mongolian",  4,2005, "Quad - Mongolian (Including Manchu, Todo, Sibo, Ali Gali)", 0x8134D238, 0x8134E337, 149, 170]
+            ,["hangul-jamo",4,2005, "Quad - Hangul Jamo",                        0x81339D36, 0x8133B635, 69,    250  ]
+            ,["hangul",     4,2005, "Quad - Hangul Compatibility Ideographs",    0x8139A933, 0x8139AE33, 51,    142  ]
+            ,["hangul-syll",4,2005, "Quad - Hangul Syllables",                   0x8237CF35, 0x8336BE36, 3436,  11172]
+            ,["mongolian",  4,2005, "Quad - Mongolian (Including Manchu, Todo, Sibo, Ali-Kali)", 0x8134D238, 0x8134E337, 155, 170]
             ,["birga",      4,2020, "Quad - Mongolian BIRGA",                    0x9034C538, 0x9034C730, 13,    13   ]
             ,["dai-dehong", 4,2005, "Quad - Dehong Dai",                         0x8134F434, 0x8134F830, 35,    37   ]
             ,["dai-new",    4,2020, "Quad - Xishuangbanna New Dai",              0x8134F932, 0x81358437, 83,    96   ]
             ,["dai-old",    4,2020, "Quad - Xishuangbanna Old Dai",              0x81358B32, 0x81359935, 127,   144  ]
+            ,["kangxi",     4,2020, "Quad - Kangxi Radicals",                    0x81398B32, 0x8139A135, 214,   224  ]
+            ,["cjk-desc",   4,2005, "Quad - Ideographs Descriptor (1)",          0x8139A332, 0x8139A335, 4,     4    ]
+            ,["cjk-desc",   4,2005, "Quad - Ideographs Descriptor (2)",          0x8139BC33, 0x8139BC33, 1,     1    ]
+            ,["cjk-stroke", 4,2005, "Quad - CJK Strokes",                        0x8139B736, 0x8139BC32, 36,    47   ]
+            ,["cjk-ext-a",  4,2000, "Quad - CJK Unified Ideographs Extension A", 0x8139EE39, 0x82358738, 6540,  6540 ]
+            ,["cjk-cjk",    4,2005, "Quad - CJK Unified Ideographs",             0x82358F33, 0x82359636, 90,    90   ]
+            ,["cjk-ext-b",  4,2005, "Quad - CJK Unified Ideographs Extension B", 0x95328236, 0x9835F336, 42720, 42720]
+            ,["cjk-ext-c",  4,2020, "Quad - CJK Unified Ideographs Extension C", 0x9835F738, 0x98399E36, 4154,  4154 ]
+            ,["cjk-ext-d",  4,2020, "Quad - CJK Unified Ideographs Extension D", 0x98399F38, 0x9839B539, 222,   222  ]
+            ,["cjk-ext-e",  4,2020, "Quad - CJK Unified Ideographs Extension E", 0x9839B632, 0x9933FE33, 5762,  5762 ]
+            ,["cjk-ext-f",  4,2020, "Quad - CJK Unified Ideographs Extension F", 0x99348138, 0x9939F730, 7473,  7473 ]
+            ,["cjk-ext-i",  4,2020, "Quad - CJK Unified Ideographs Extension I (for personal names)", 0x9939F836, 0x9A30B837, 622,   622  ]
+            ,["cjk-ext-g",  4,2020, "Quad - CJK Unified Ideographs Extension G", 0x9A348432, 0x9A37F830, 4939,  4939 ]
+            ,["cjk-ext-h",  4,2020, "Quad - CJK Unified Ideographs Extension H", 0x9A37F836, 0x9B31A337, 4192,  4192 ]
             ,["yi",         4,2005, "Quad - Yi Syllables and Radicals",          0x82359833, 0x82369435, 1215,  1223 ]
             ,["lisu",       4,2020, "Quad - Lisu",                               0x82369535, 0x82369A32, 48,    48   ]
-            ,["hangul-jamo",4,2005, "Quad - Hangul Jamo",                        0x81339D36, 0x8133B635, 69,    250  ]
-            ,["hangul",     4,2005, "Quad - Hangul Compatibility Ideographs",    0x8139A933, 0x8139B734, 51,    142  ]
-            ,["hangul-syll",4,2005, "Quad - Hangul Syllables",                   0x8237CF35, 0x8336BE36, 3431,  11172]
-            ,["miao",       4,2020, "Quad - Diandong Miao",                      0x9232C636, 0x9232D635, 133,   160  ]
-            ,["kangxi",     4,2020, "Quad - Kangxi Radicals",                    0x81398B32, 0x8139A135, 214,   224  ]
-            ,["cjkexta",    4,2000, "Quad - CJK Unified Ideographs Extension A", 0x8139EE39, 0x82358738, 6530,  6530 ]
-            ,["cjk",        4,2005, "Quad - CJK Unified Ideographs",             0x82358F33, 0x82359636, 66,    74   ]
-            ,["cjkextb",    4,2005, "Quad - CJK Unified Ideographs Extension B", 0x95328236, 0x9835F336, 42711, 42711]
-            ,["cjkextc",    4,2020, "Quad - CJK Unified Ideographs Extension C", 0x9835F738, 0x98399E36, 4149,  4149 ]
-            ,["cjkextd",    4,2020, "Quad - CJK Unified Ideographs Extension D", 0x98399F38, 0x9839B539, 222,   222  ]
-            ,["cjkexte",    4,2020, "Quad - CJK Unified Ideographs Extension E", 0x9839B632, 0x9933FE33, 5762,  5762 ]
-            ,["cjkextf",    4,2020, "Quad - CJK Unified Ideographs Extension F", 0x99348138, 0x9939F730, 7473,  7473 ]
+            ,["miao",       4,2020, "Quad - Diandongbei Miao",                   0x9232C636, 0x9232D635, 149,   160  ]
              ]
             #  0            1 2     3                     4       5       6     7     8               9
             #  name         w ver   note                  start   end     used  all   high 4bit       low
@@ -280,39 +296,39 @@ big5zone   =[["single",     1,1992, "Single",             0x01,   0x7F,   128,  
             ,["pua3",       2,1992, "PUA 3",              0xF9D6, 0xFEFE, 1326, 1326, rangeBIG5Y,  rangeBIG5L]
             ,["reserved",   2,1992, "Reserved",           0xA3C0, 0xA3FE, 63,   63,   rangeBIG5Y,  rangeBIG5L]
              ]
-            #  0                     1 2     3                                           4         5         6     7     8            9
-            #  name                  w ver   note                                        start     end       used  all   high 4bit    used code
-unicodezone=[#["controls-0",          6,1993, "C0 Controls",                              0x000001, 0x00001F, 31,  31],
-             ["latin",               6,1993, "Basic Latin",                              0x000020, 0x00007F, 95,  95]
-            ,["controls-1",          6,1992, "C1 Controls",                              0x000080, 0x00009F, 32,  32]
-            ,["latin-1",             6,1993, "Latin-1 Supplement",                       0x0000A0, 0x0000FF, 96,  96]
-            ,["latin-ext-a",         6,1993, "Latin Extended-A",                         0x000100, 0x00017F, 128, 128]
-            ,["latin-ext-b",         6,1993, "Latin Extended-B",                         0x000180, 0x00024F, 208, 208]
-            ,["ipa-ext",             6,1993, "Ipa Extensions",                           0x000250, 0x0002AF, 96,  96]
-            ,["spacing",             6,1993, "Spacing Modifier Letters",                 0x0002B0, 0x0002FF, 80,  80]
-            ,["diacritical",         6,1993, "Combining Diacritical Marks",              0x000300, 0x00036F, 112, 112]
-            ,["greek",               6,1993, "Greek And Coptic",                         0x000370, 0x0003FF, 144, 144]
-            ,["cyrillic",            6,1993, "Cyrillic",                                 0x000400, 0x0004FF, 256, 256]
-            ,["cyrillic-supp",       6,2002, "Cyrillic Supplement",                      0x000500, 0x00052F, 48,  48]
-            ,["armenian",            6,1993, "Armenian",                                 0x000530, 0x00058F, 96,  96]
-            ,["hebrew",              6,1993, "Hebrew",                                   0x000590, 0x0005FF, 112, 112]
-            ,["arabic",              6,1993, "Arabic",                                   0x000600, 0x0006FF, 256, 256]
+            #  0                     1 2     3                                           4         5         6     7     8     
+            #  name                  w ver   note                                        start     end       used  all   ttfbit
+unicodezone=[#["controls-0",          6,1993, "C0 Controls",                              0x000001, 0x00001F, 31,  31,    0],
+             ["latin",               6,1993, "Basic Latin",                              0x000020, 0x00007F, 95,  95,    0]
+            ,["controls-1",          6,1992, "C1 Controls",                              0x000080, 0x00009F, 32,  32,    1]
+            ,["latin-1",             6,1993, "Latin-1 Supplement",                       0x0000A0, 0x0000FF, 96,  96,    1]
+            ,["latin-ext-a",         6,1993, "Latin Extended-A",                         0x000100, 0x00017F, 128, 128,   2]
+            ,["latin-ext-b",         6,1993, "Latin Extended-B",                         0x000180, 0x00024F, 208, 208,   3]
+            ,["ipa-ext",             6,1993, "Ipa Extensions",                           0x000250, 0x0002AF, 96,  96,    4]
+            ,["spacing",             6,1993, "Spacing Modifier Letters",                 0x0002B0, 0x0002FF, 80,  80,    5]
+            ,["diacritical",         6,1993, "Combining Diacritical Marks",              0x000300, 0x00036F, 112, 112,   6]
+            ,["greek",               6,1993, "Greek And Coptic",                         0x000370, 0x0003FF, 144, 144,   7]
+            ,["cyrillic",            6,1993, "Cyrillic",                                 0x000400, 0x0004FF, 256, 256,   9]
+            ,["cyrillic-supp",       6,2002, "Cyrillic Supplement",                      0x000500, 0x00052F, 48,  48,    9]
+            ,["armenian",            6,1993, "Armenian",                                 0x000530, 0x00058F, 96,  96,   10]
+            ,["hebrew",              6,1993, "Hebrew",                                   0x000590, 0x0005FF, 112, 112,  11]
+            ,["arabic",              6,1993, "Arabic",                                   0x000600, 0x0006FF, 256, 256,  13]
             ,["syriac",              6,1999, "Syriac",                                   0x000700, 0x00074F, 80,  80]
-            ,["arabic-supp",         6,2005, "Arabic Supplement",                        0x000750, 0x00077F, 48,  48]
+            ,["arabic-supp",         6,2005, "Arabic Supplement",                        0x000750, 0x00077F, 48,  48,   13]
             ,["thaana",              6,1999, "Thaana",                                   0x000780, 0x0007BF, 64,  64]
-            ,["nko",                 6,2006, "Nko",                                      0x0007C0, 0x0007FF, 64,  64]
+            ,["nko",                 6,2006, "Nko",                                      0x0007C0, 0x0007FF, 64,  64,   14]
             ,["samaritan",           6,2009, "Samaritan",                                0x000800, 0x00083F, 64,  64]
             ,["mandaic",             6,2010, "Mandaic",                                  0x000840, 0x00085F, 32,  32]
             ,["syriac-supp",         6,2017, "Syriac Supplement",                        0x000860, 0x00086F, 16,  16]
             ,["arabic-ext-b",        6,2021, "Arabic Extended-B",                        0x000870, 0x00089F, 48,  48]
             ,["arabic-ext-a",        6,2012, "Arabic Extended-A",                        0x0008A0, 0x0008FF, 96,  96]
-            ,["devanagari",          6,1993, "Devanagari",                               0x000900, 0x00097F, 128, 128]
-            ,["bengali",             6,1993, "Bengali",                                  0x000980, 0x0009FF, 128, 128]
-            ,["gurmukhi",            6,1993, "Gurmukhi",                                 0x000A00, 0x000A7F, 128, 128]
-            ,["gujarati",            6,1993, "Gujarati",                                 0x000A80, 0x000AFF, 128, 128]
-            ,["oriya",               6,1993, "Oriya",                                    0x000B00, 0x000B7F, 128, 128]
-            ,["tamil",               6,1993, "Tamil",                                    0x000B80, 0x000BFF, 128, 128]
-            ,["telugu",              6,1993, "Telugu",                                   0x000C00, 0x000C7F, 128, 128]
+            ,["devanagari",          6,1993, "Devanagari",                               0x000900, 0x00097F, 128, 128,  15]
+            ,["bengali",             6,1993, "Bengali",                                  0x000980, 0x0009FF, 128, 128,  16]
+            ,["gurmukhi",            6,1993, "Gurmukhi",                                 0x000A00, 0x000A7F, 128, 128,  17]
+            ,["gujarati",            6,1993, "Gujarati",                                 0x000A80, 0x000AFF, 128, 128,  18]
+            ,["oriya",               6,1993, "Oriya",                                    0x000B00, 0x000B7F, 128, 128,  19]
+            ,["tamil",               6,1993, "Tamil",                                    0x000B80, 0x000BFF, 128, 128,  20]
+            ,["telugu",              6,1993, "Telugu",                                   0x000C00, 0x000C7F, 128, 128,  21]
             ,["kannada",             6,1993, "Kannada",                                  0x000C80, 0x000CFF, 128, 128]
             ,["malayalam",           6,1993, "Malayalam",                                0x000D00, 0x000D7F, 128, 128]
             ,["sinhala",             6,1999, "Sinhala",                                  0x000D80, 0x000DFF, 128, 128]
@@ -351,9 +367,9 @@ unicodezone=[#["controls-0",          6,1993, "C0 Controls",                    
             ,["georgian-ext",        6,2018, "Georgian Extended",                        0x001C90, 0x001CBF, 48, 48]
             ,["sundanese-supp",      6,2016, "Sundanese Supplement",                     0x001CC0, 0x001CCF, 16, 16]
             ,["vedic-ext",           6,2009, "Vedic Extensions",                         0x001CD0, 0x001CFF, 48, 48]
-            ,["phonetic-ext",        6,2003, "Phonetic Extensions",                      0x001D00, 0x001D7F, 128, 128]
-            ,["phonetic-ext-supp",   6,2005, "Phonetic Extensions Supplement",           0x001D80, 0x001DBF, 64, 64]
-            ,["diacritical-supp",    6,2005, "Combining Diacritical Marks Supplement",   0x001DC0, 0x001DFF, 64, 64]
+            ,["phonetic-ext",        6,2003, "Phonetic Extensions",                      0x001D00, 0x001D7F, 128, 128,  4]
+            ,["phonetic-ext-supp",   6,2005, "Phonetic Extensions Supplement",           0x001D80, 0x001DBF, 64, 64,    4]
+            ,["diacritical-supp",    6,2005, "Combining Diacritical Marks Supplement",   0x001DC0, 0x001DFF, 64, 64,    5]
             ,["latin-ext-add",       6,1993, "Latin Extended Additional",                0x001E00, 0x001EFF, 256, 256]
             ,["greek-ext",           6,1993, "Greek Extended",                           0x001F00, 0x001FFF, 256, 256]
             ,["punctuation",         6,1993, "General Punctuation",                      0x002000, 0x00206F, 112, 112]
@@ -382,11 +398,11 @@ unicodezone=[#["controls-0",          6,1993, "C0 Controls",                    
             ,["symbols-arrows",      6,2003, "Miscellaneous Symbols And Arrows",         0x002B00, 0x002BFF, 256, 256]
             ,["glagolitic",          6,2005, "Glagolitic",                               0x002C00, 0x002C5F, 96, 96]
             ,["latin-ext-c",         6,2006, "Latin Extended-C",                         0x002C60, 0x002C7F, 32, 32]
-            ,["coptic",              6,2005, "Coptic",                                   0x002C80, 0x002CFF, 128, 128]
+            ,["coptic",              6,2005, "Coptic",                                   0x002C80, 0x002CFF, 128, 128,   8]
             ,["georgian-supp",       6,2005, "Georgian Supplement",                      0x002D00, 0x002D2F, 48, 48]
             ,["tifinagh",            6,2005, "Tifinagh",                                 0x002D30, 0x002D7F, 80, 80]
             ,["ethiopic-ext",        6,2005, "Ethiopic Extended",                        0x002D80, 0x002DDF, 96, 96]
-            ,["cyrillic-ext-a",      6,2008, "Cyrillic Extended-A",                      0x002DE0, 0x002DFF, 32, 32]
+            ,["cyrillic-ext-a",      6,2008, "Cyrillic Extended-A",                      0x002DE0, 0x002DFF, 32, 32,     9]
             ,["punctuation-supp",    6,2005, "Supplemental Punctuation",                 0x002E00, 0x002E7F, 128, 128]
             ,["cjk-radicals-supp",   6,1999, "CJK Radicals Supplement",                  0x002E80, 0x002EFF, 128, 128]
             ,["kangxi",              6,1999, "Kangxi Radicals",                          0x002F00, 0x002FDF, 224, 224]
@@ -404,14 +420,14 @@ unicodezone=[#["controls-0",          6,1993, "C0 Controls",                    
             ,["cjk-comp",            6,1993, "CJK Compatibility",                        0x003300, 0x0033FF, 256, 256]
             ,["cjk-ext-a",           6,1999, "CJK Unified Ideographs Extension A",       0x003400, 0x004DBF, 6592, 6592]
             ,["yijing",              6,2003, "Yijing Hexagram Symbols",                  0x004DC0, 0x004DFF, 64, 64]
-            ,["cjk",                 6,1993, "CJK Unified Ideographs",                   0x004E00, 0x009FFF, 20992, 20992]
+            ,["cjk-cjk",             6,1993, "CJK Unified Ideographs",                   0x004E00, 0x009FFF, 20992, 20992]
             ,["yi",                  6,1999, "Yi Syllables",                             0x00A000, 0x00A48F, 1168, 1168]
             ,["yi-radicals",         6,1999, "Yi Radicals",                              0x00A490, 0x00A4CF, 64, 64]
             ,["lisu",                6,2009, "Lisu",                                     0x00A4D0, 0x00A4FF, 48, 48]
-            ,["vai",                 6,2008, "Vai",                                      0x00A500, 0x00A63F, 320, 320]
-            ,["cyrillic-ext-b",      6,2008, "Cyrillic Extended-B",                      0x00A640, 0x00A69F, 96, 96]
+            ,["vai",                 6,2008, "Vai",                                      0x00A500, 0x00A63F, 320, 320,    12]
+            ,["cyrillic-ext-b",      6,2008, "Cyrillic Extended-B",                      0x00A640, 0x00A69F, 96, 96,       9]
             ,["bamum",               6,2009, "Bamum",                                    0x00A6A0, 0x00A6FF, 96, 96]
-            ,["tone",                6,2005, "Modifier Tone Letters",                    0x00A700, 0x00A71F, 32, 32]
+            ,["tone",                6,2005, "Modifier Tone Letters",                    0x00A700, 0x00A71F, 32, 32,       5]
             ,["latin-ext-d",         6,2006, "Latin Extended-D",                         0x00A720, 0x00A7FF, 224, 224]
             ,["sylotinagri",         6,2005, "Syloti Nagri",                             0x00A800, 0x00A82F, 48, 48]
             ,["indicnumber",         6,2009, "Common Indic Number Forms",                0x00A830, 0x00A83F, 16, 16]
@@ -439,7 +455,7 @@ unicodezone=[#["controls-0",          6,1993, "C0 Controls",                    
             ,["pua",                 6,1991, "Private Use Area",                         0x00E000, 0x00F8FF, 0, 6400]
             ,["cjk-comp-ideo",       6,1993, "CJK Compatibility Ideographs",             0x00F900, 0x00FAFF, 472, 512]
             ,["alphabetic",          6,1993, "Alphabetic Presentation Forms",            0x00FB00, 0x00FB4F, 58, 80]
-            ,["arbic-pfa",           6,1993, "Arabic Presentation Forms-A",              0x00FB50, 0x00FDFF, 663, 688]
+            ,["arabic-pfa",          6,1993, "Arabic Presentation Forms-A",              0x00FB50, 0x00FDFF, 663, 688]
             ,["selectors",           6,2002, "Variation Selectors",                      0x00FE00, 0x00FE0F, 16, 16]
             ,["vertical",            6,2005, "Vertical Forms",                           0x00FE10, 0x00FE1F, 10, 16]
             ,["half",                6,1993, "Combining Half Marks",                     0x00FE20, 0x00FE2F, 16, 16]
@@ -683,8 +699,89 @@ def writeUnicode(f, nm, st, ed):
   writefile.subtitle(f, nm, writefile.stringHEX(st)+"-"+writefile.stringHEX(ed))
   writefile.arrayUnicode(f, 0, range(st>>4,(ed>>4)+1), 4) 
 
+def writeUnicodeMap(f):
+  rows = 0 # next point
+  cols = 0 # next point
+  s = "<table border=0 cellpadding=0 cellspacing=0 class=infoText>"
+  color = ["LightBlue","Gainsboro","Lavender","Beige","LightGray","lightcyan","AliceBlue","AntiqueWhite","LightGreen"]
+  colorindex = 0
+  for i in range(len(unicodezone)):
+    isshowed=False
+    #s=s+unicodezone[i][ZONE_NAME]
+    colorindex = (colorindex+1) % 9
+    currRowStart = unicodezone[i][ZONE_CODE_START]>>8
+    currRowEnd   = unicodezone[i][ZONE_CODE_END]>>8
+    currColStart = unicodezone[i][ZONE_CODE_START] & 0xFF
+    currColEnd   = unicodezone[i][ZONE_CODE_END] & 0xFF
+    if rows < currRowStart:
+      if cols < 256:
+        if isshowed == False:
+          s = s+"<td colspan="+ str(256-cols) +"><i>reserved</i></td></tr>\n"
+          isshowed = True
+        else:
+          s = s+"<td colspan="+ str(256-cols) +">&nbsp;</td></tr>\n"
+        cols = 0
+        rows = rows+1
+      for j in range(rows,currRowStart):
+        if isshowed == False:
+          s = s+"<tr><td>"+hex(rows)[2:].upper()+"</td><td colspan=256><i>reserved</i></td></tr>\n"
+          isshowed = True
+        else:
+          s = s+"<tr><td>"+hex(rows)[2:].upper()+"</td><td colspan=256>&nbsp;</td></tr>\n"
+        rows = j+1
+    if rows == currRowStart:
+      if cols < currColStart:
+        if cols == 0:
+          s = s+"<tr><td>"+hex(rows)[2:].upper()+"</td>"
+        if isshowed == False:
+          s = s+"<td colspan="+ str(currColStart-cols) +"><i>reserved</i></td>"
+          isshowed = True
+        else:
+          s = s+"<td colspan="+ str(currColStart-cols) +">&nbsp;</td>"
+        cols = currColStart+1
+        if cols >= 256:
+          s = s+"</tr>\n"
+          cols = 0
+          rows = rows+1
+      if rows < currRowEnd:
+        if cols == 0:
+          s = s+"<tr><td>"+hex(rows)[2:].upper()+"</td>"
+        if cols < 256:
+          if isshowed == False:
+            s = s+"<td bgcolor="+color[colorindex]+" colspan="+ str(256-cols) +">"+unicodezone[i][ZONE_NAME]+"</td></tr>\n"
+            isshowed = True
+          else:
+            s = s+"<td bgcolor="+color[colorindex]+" colspan="+ str(256-cols) +">&nbsp;</td></tr>\n"
+          cols = 0
+          rows = rows+1
+        for j in range(rows,currRowEnd):
+          if isshowed == False:
+            s = s+"<tr><td>"+hex(rows)[2:].upper()+"</td><td bgcolor="+color[colorindex]+" colspan=256>"+unicodezone[i][ZONE_NAME]+"</td></tr>\n"
+            isshowed = True
+          else:
+            s = s+"<tr><td>"+hex(rows)[2:].upper()+"</td><td bgcolor="+color[colorindex]+" colspan=256>&nbsp;</td></tr>\n"
+          cols = 0
+          rows = j+1
+      if rows == currRowEnd:
+        if cols == 0:
+          s = s+"<tr><td>"+hex(rows)[2:].upper()+"</td>"
+        if cols < currColEnd:
+          if isshowed == False:
+            s = s+"<td bgcolor="+color[colorindex]+" colspan="+ str(currColEnd-cols) +">"+unicodezone[i][ZONE_NAME]+"</td>"
+            isshowed = True
+          else:
+            s = s+"<td bgcolor="+color[colorindex]+" colspan="+ str(currColEnd-cols) +">&nbsp;</td>"
+          cols = currColEnd+1
+          if cols >=256:
+            cols = 0
+            rows = rows + 1
+            s = s+"</tr>\n"
+  s = s+"</table>"
+  writefile.string(f,s)
+
 def writeZones(f, zone, checkedZoneList):
   for i in range(len(zone)):
+    argument.progress_bar("write zones ", i, len(zone)-1)
     if (    (checkedZoneList=="" or isInList(zone[i][ZONE_NAME], checkedZoneList) or isInList(zone[i][ZONE_ID], checkedZoneList))
         and ((zone[i][ZONE_VERSION] >= vermin) and (zone[i][ZONE_VERSION] <= vermax))
        ):
@@ -699,6 +796,7 @@ def writeZones(f, zone, checkedZoneList):
 
 def writeFulls(f, full, checkedFullList):
   for i in range(len(full)):
+    argument.progress_bar("write matrix", i, len(full)-1)
     if (checkedFullList=="" or full[i][FULL_ID] in checkedFullList):
       writefile.subtitle(f, full[i][FULL_NAME], "")
       if full[i][FULL_BYTE_WIDTH]==1:
@@ -732,7 +830,13 @@ def dec2hexstr(d, w, tn, ts):
     s = s + ts
   return s
 
-def listZones(z,a):
+def listZones(c,z,a):
+  print("---------------------------------------------") 
+  print("    Name : "+ c[2])
+  print("Codepage : "+ c[INFO_CODEPAGE])
+  print("Language : "+ c[INFO_LANGUAGE])
+  print("   Range : "   + c[INFO_RANGE])
+  print(" Version : " + c[INFO_VERSION])
   print("---------------------------------------------") 
   print("zone id          note") 
   print("----------------+----------------------------")
@@ -790,11 +894,22 @@ def arraylist(isshow, full, checkedFullList):
       ret = ret + writefile.lineBreak()
   return ret
 
-
 if listZone=="True":
-  listZones(zones[currset],fulls[currset])
+  listZones(charsetinfo[currset],zones[currset],fulls[currset])
 
 with open(fn1, 'wb') as f:
+  if writefile.unicode_encoding == "UTF-16":
+    writefile.utf16BEinitial(f)
+  if writefile.unicode_encoding == "UTF-16BE":
+    writefile.utf16BEinitial(f)
+  if writefile.unicode_encoding == "UTF-16LE":
+    writefile.utf16LEinitial(f)
+  if writefile.unicode_encoding == "UTF-32":
+    writefile.utf32BEinitial(f)
+  if writefile.unicode_encoding == "UTF-32BE":
+    writefile.utf32BEinitial(f)
+  if writefile.unicode_encoding == "UTF-32LE":
+    writefile.utf32LEinitial(f)
   writefile.head(f, charsetinfo[currset][0],charsetinfo[currset][1]);
   writefile.title(f, charsetinfo[currset][2],\
                     "Codepage : "+charsetinfo[currset][INFO_CODEPAGE] + writefile.lineBreak() +\
@@ -804,6 +919,7 @@ with open(fn1, 'wb') as f:
                      zonelist(byBlock,zones[currset],showZones),\
                      arraylist(oneArray,fulls[currset],showFulls))
   writefile.breakline(f)
+  #writeUnicodeMap(f)
 
   if byBlock=="True":
     writeZones(f, zones[currset], showZones)
